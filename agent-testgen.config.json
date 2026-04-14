@@ -1,8 +1,9 @@
 {
-  "allowedWriteGlobs": ["**/*.test.ts", "**/*.spec.ts"],
+  "allowedWriteGlobs": ["tests/generated/**/*.test.ts", "tests/generated/**/*.spec.ts"],
   "forbidProductionFileEdits": true,
   "forbidDependencyChanges": true,
   "framework": "jest",
   "testFilePatterns": [".test.ts", ".spec.ts"],
+  "generatedRoot": "tests/generated",
   "ignoredPathFragments": ["node_modules", ".git", "dist"]
 }

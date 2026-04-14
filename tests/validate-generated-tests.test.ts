@@ -10,8 +10,8 @@ describe('generated test validation', () => {
     const input = path.join(root, 'generated.json');
     const config = path.join(root, 'config.json');
     const output = path.join(root, 'result.json');
-    writeJsonFile(input, { files: [{ path: 'src/foo/bar.test.ts', content: 'test' }] });
-    writeJsonFile(config, { allowedWriteGlobs: ['**/*.test.ts', '**/*.spec.ts'] });
+    writeJsonFile(input, { files: [{ path: 'tests/generated/bar.test.ts', content: 'test' }] });
+    writeJsonFile(config, { allowedWriteGlobs: ['tests/generated/**/*.test.ts', 'tests/generated/**/*.spec.ts'], generatedRoot: 'tests/generated' });
     execFileSync('node', ['dist/scripts/validate-generated-tests.js', '--input', input, '--config', config, '--out', output], { cwd: process.cwd() });
     expect(readJsonFile<{ accepted: boolean }>(output).accepted).toBe(true);
   });
@@ -22,7 +22,7 @@ describe('generated test validation', () => {
     const config = path.join(root, 'config.json');
     const output = path.join(root, 'result.json');
     writeJsonFile(input, { files: [{ path: 'src/foo/bar.ts', content: 'export const x = 1;' }] });
-    writeJsonFile(config, { allowedWriteGlobs: ['**/*.test.ts', '**/*.spec.ts'] });
+    writeJsonFile(config, { allowedWriteGlobs: ['tests/generated/**/*.test.ts', 'tests/generated/**/*.spec.ts'], generatedRoot: 'tests/generated' });
     try {
       execFileSync('node', ['dist/scripts/validate-generated-tests.js', '--input', input, '--config', config, '--out', output], { cwd: process.cwd(), stdio: 'pipe' });
     } catch {}

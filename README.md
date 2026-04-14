@@ -49,13 +49,15 @@ Expected API response:
 {
   "files": [
     {
-      "path": "src/foo/bar.test.ts",
+      "path": "tests/generated/foo__bar.test.ts",
       "content": "..."
     }
   ],
   "notes": "optional summary"
 }
 ```
+
+Generated files are allowed only under `tests/generated/`.
 
 The workflow also updates one persistent PR comment with the latest generated-test result.
 
@@ -65,3 +67,4 @@ The workflow also updates one persistent PR comment with the latest generated-te
 - v1 only supports Jest unit tests
 - generated output is artifact-oriented, not auto-pushed back to the branch
 - external API must return generated test files JSON
+- generated test files must be placed only under `tests/generated/`

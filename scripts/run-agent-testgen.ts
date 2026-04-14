@@ -49,7 +49,8 @@ function generateStub(context: InitialContext): GeneratedFilesManifest {
     : [{ path: 'src/example.ts' } as typeof context.changedFiles[number]];
 
   const files = sourceFiles.slice(0, 1).map((changedFile) => {
-    const targetPath = changedFile.path.replace(/\.(ts|tsx|js|jsx)$/, '.test.ts');
+    const safeName = changedFile.path.replace(/[\\/]+/g, '__').replace(/\.(ts|tsx|js|jsx)$/, '');
+    const targetPath = `tests/generated/${safeName}.test.ts`;
     const name = path.basename(changedFile.path).replace(/\.(ts|tsx|js|jsx)$/, '');
     return {
       path: targetPath,
