@@ -36,14 +36,16 @@ The GitHub Actions workflow lives at `.github/workflows/agent-jest.yml` and runs
 
 ### Required GitHub secrets
 
-- `AGENT_API_URL`
-- `AGENT_API_KEY`
+- `OPENAI_API_KEY`
 
-The workflow sends the initial context JSON to `AGENT_API_URL` with:
-- `content-type: application/json`
-- `x-api-key: <AGENT_API_KEY>`
+Optional:
+- `OPENAI_MODEL` (defaults to `gpt-5.4`)
 
-Expected API response:
+The workflow sends the initial context JSON to the OpenAI Responses API:
+- `POST https://api.openai.com/v1/responses`
+- `Authorization: Bearer <OPENAI_API_KEY>`
+
+Expected model output (STRICT JSON):
 
 ```json
 {

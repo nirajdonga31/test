@@ -19,28 +19,64 @@ function assertGeneratedFilesManifest(value: any): GeneratedFilesManifest {
   return value as GeneratedFilesManifest;
 }
 
-async function generateViaApi(context: InitialContext): Promise<GeneratedFilesManifest> {
-  const url = process.env.AGENT_API_URL;
-  const apiKey = process.env.AGENT_API_KEY;
-  if (!url || !apiKey) {
-    throw new Error('AGENT_API_URL and AGENT_API_KEY are required for api mode');
+async function generateViaOpenAI(context: InitialContext): Promise<GeneratedFilesManifest> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_MODEL || 'gpt-5.4';
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is required for api mode');
   }
 
-  const response = await fetch(url, {
+  const system = [
+    'You generate Jest unit tests for a PR based on provided context JSON.',
+    'Hard constraints:',
+    '- Output must be STRICT JSON only (no markdown).',
+    '- Output must match this schema exactly: {"files":[{"path":"tests/generated/<name>.test.ts","content":"..."}],"notes":"..."}',
+    '- You may only generate files under tests/generated/. No other paths.',
+    '- Do not propose changes to production code. Only tests.',
+    '- Keep tests minimal and focused on changed behavior.',
+  ].join('\n');
+
+  const user = [
+    'Context JSON follows. Generate Jest tests accordingly.',
+    JSON.stringify(context),
+  ].join('\n');
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
+      Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(context),
+    body: JSON.stringify({
+      model,
+      input: [
+        { role: 'system', content: [{ type: 'text', text: system }] },
+        { role: 'user', content: [{ type: 'text', text: user }] },
+      ],
+      // Ask for JSON mode via response_format.
+      response_format: { type: 'json_object' },
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`Agent API error ${response.status}: ${await response.text()}`);
+    throw new Error(`OpenAI API error ${response.status}: ${await response.text()}`);
   }
 
   const json = await response.json();
-  return assertGeneratedFilesManifest(json);
+  // Responses API returns content in output_text; prefer that for strict JSON.
+  const outputText = (json.output_text as string | undefined) || '';
+  if (!outputText.trim()) {
+    throw new Error('OpenAI response missing output_text');
+  }
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(outputText);
+  } catch {
+    throw new Error('OpenAI output_text was not valid JSON');
+  }
+
+  return assertGeneratedFilesManifest(parsed);
 }
 
 function generateStub(context: InitialContext): GeneratedFilesManifest {
@@ -70,7 +106,7 @@ async function main(): Promise<void> {
   const mode = argValue('--mode') || 'stub';
   const context = readJsonFile<InitialContext>(path.resolve(contextPath));
 
-  const manifest = mode === 'api' ? await generateViaApi(context) : generateStub(context);
+  const manifest = mode === 'api' ? await generateViaOpenAI(context) : generateStub(context);
   writeJsonFile(path.resolve(outPath), manifest);
   console.log(JSON.stringify({ ok: true, generatedFiles: manifest.files.length, mode }, null, 2));
 }
