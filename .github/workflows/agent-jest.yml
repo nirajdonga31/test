@@ -1,0 +1,63 @@
+name: agent-jest
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  generate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Build initial context
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: npm run context:build -- --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
+
+      - name: Generate tests
+        run: npm run agent:generate
+
+      - name: Validate generated tests
+        run: npm run validate:generated
+
+      - name: Prepare isolated workspace
+        run: npm run prepare:workspace
+
+      - name: Apply generated tests to isolated workspace
+        run: npm run apply:generated
+
+      - name: Install dependencies in isolated workspace
+        run: |
+          cd artifacts/workspace
+          npm install
+
+      - name: Run generated Jest tests
+        run: npm run jest:generated
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-jest-artifacts
+          path: |
+            artifacts/context
+            artifacts/generated
+            artifacts/jest

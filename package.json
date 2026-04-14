@@ -1,0 +1,24 @@
+{
+  "name": "agent-jest-pr-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PR-triggered context builder and Jest test generation pipeline",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest --runInBand",
+    "test:run": "npm test",
+    "context:build": "node dist/scripts/build-agent-context.js",
+    "agent:generate": "node dist/scripts/run-agent-testgen.js --context artifacts/context/initial-context.json --out artifacts/generated/generated-files.json --mode stub",
+    "validate:generated": "node dist/scripts/validate-generated-tests.js --input artifacts/generated/generated-files.json --config agent-testgen.config.json --out artifacts/generated/validation-result.json",
+    "prepare:workspace": "node dist/scripts/prepare-workspace.js artifacts/workspace",
+    "apply:generated": "node dist/scripts/apply-generated-tests.js --input artifacts/generated/generated-files.json --dest artifacts/workspace --out artifacts/generated/written-files.json",
+    "jest:generated": "node dist/scripts/run-generated-jest.js --input artifacts/generated/generated-files.json --workspace artifacts/workspace --outDir artifacts/jest"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.13.5",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.8.3"
+  }
+}
