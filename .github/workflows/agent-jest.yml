@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   generate-and-test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       AGENT_GENERATOR_MODE: api
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
