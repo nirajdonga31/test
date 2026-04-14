@@ -4,9 +4,17 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   generate-and-test:
     runs-on: ubuntu-latest
+    env:
+      AGENT_GENERATOR_MODE: api
+      AGENT_API_URL: ${{ secrets.AGENT_API_URL }}
+      AGENT_API_KEY: ${{ secrets.AGENT_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,3 +69,10 @@ jobs:
             artifacts/context
             artifacts/generated
             artifacts/jest
+
+      - name: Comment latest result on PR
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: npm run pr:comment

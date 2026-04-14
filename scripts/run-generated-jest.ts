@@ -17,7 +17,7 @@ ensureDir(outDir);
 const manifest = readJsonFile<GeneratedFilesManifest>(inputPath);
 const generatedRelativePaths = manifest.files.map((file) => file.path);
 const jestResultsPath = path.join(outDir, 'jest-results.json');
-const command = ['npx', 'jest', '--config', JSON.stringify({ preset: 'ts-jest', testEnvironment: 'node' }), '--runInBand', '--runTestsByPath', '--json', `--outputFile=${jestResultsPath}`, ...generatedRelativePaths];
+const command = ['npx', 'jest', '--config', JSON.stringify({ preset: 'ts-jest', testEnvironment: 'node', moduleFileExtensions: ['ts', 'js', 'json'] }), '--runInBand', '--runTestsByPath', '--json', `--outputFile=${jestResultsPath}`, ...generatedRelativePaths];
 
 let status: 'passed' | 'failed' = 'passed';
 try {

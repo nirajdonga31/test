@@ -34,9 +34,34 @@ npm test
 
 The GitHub Actions workflow lives at `.github/workflows/agent-jest.yml` and runs on pull requests.
 
+### Required GitHub secrets
+
+- `AGENT_API_URL`
+- `AGENT_API_KEY`
+
+The workflow sends the initial context JSON to `AGENT_API_URL` with:
+- `content-type: application/json`
+- `x-api-key: <AGENT_API_KEY>`
+
+Expected API response:
+
+```json
+{
+  "files": [
+    {
+      "path": "src/foo/bar.test.ts",
+      "content": "..."
+    }
+  ],
+  "notes": "optional summary"
+}
+```
+
+The workflow also updates one persistent PR comment with the latest generated-test result.
+
 ## Current limits
 
-- local repo uses a stub generator instead of a real external agent
+- local repo still supports stub mode for development
 - v1 only supports Jest unit tests
-- generated output is artifact-oriented, not auto-pushed
-- GitHub push from this environment still depends on working repo credentials
+- generated output is artifact-oriented, not auto-pushed back to the branch
+- external API must return generated test files JSON
