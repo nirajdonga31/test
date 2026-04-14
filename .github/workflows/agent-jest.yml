@@ -15,7 +15,8 @@ jobs:
       - name: Trigger OpenClaw in Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          CONTENT: gen-tests repo=${{ github.repository }} pr=${{ github.event.pull_request.number }} run_id=${{ github.run_id }} run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CONTENT: >-
+            gen-tests repo=${{ github.repository }} pr=${{ github.event.pull_request.number }} run_id=${{ github.run_id }} run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
           if [ -z "$DISCORD_WEBHOOK_URL" ]; then
