@@ -25,11 +25,11 @@ jobs:
           fi
 
           python3 - <<'PY'
-import json, os, sys, urllib.request
-url = os.environ['DISCORD_WEBHOOK_URL']
-content = os.environ['CONTENT']
-body = json.dumps({"content": content}).encode('utf-8')
-req = urllib.request.Request(url, data=body, headers={'Content-Type': 'application/json'}, method='POST')
-with urllib.request.urlopen(req) as resp:
-  sys.stdout.write(resp.read().decode('utf-8'))
-PY
+          import json, os, sys, urllib.request
+          url = os.environ['DISCORD_WEBHOOK_URL']
+          content = os.environ['CONTENT']
+          body = json.dumps({"content": content}).encode('utf-8')
+          req = urllib.request.Request(url, data=body, headers={'Content-Type': 'application/json'}, method='POST')
+          with urllib.request.urlopen(req) as resp:
+            sys.stdout.write(resp.read().decode('utf-8'))
+          PY
