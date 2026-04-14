@@ -26,8 +26,8 @@ npm test
 - `npm run context:build -- --base <sha> --head <sha>` - build initial context JSON
 - `npm run agent:generate` - run stub agent generator
 - `npm run validate:generated` - validate generated test files
-- `npm run prepare:workspace` - copy repo into isolated `artifacts/workspace`
-- `npm run apply:generated` - apply generated files to `artifacts/workspace`
+- `npm run prepare:workspace` - copy repo into isolated `.agent-jest/artifacts/workspace`
+- `npm run apply:generated` - apply generated files to `.agent-jest/artifacts/workspace`
 - `npm run jest:generated` - run Jest against generated tests in isolated workspace
 
 ## Workflow
