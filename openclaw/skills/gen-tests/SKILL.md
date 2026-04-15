@@ -26,14 +26,13 @@ Purpose: Orchestrate the existing `tester/.agent-jest` pipeline from OpenClaw:
   - list of file paths
   (Do NOT paste full test contents in Discord.)
 
-## Runner
-After running the context script, run:
-
-```bash
-cd /root/.openclaw/workspace/tester
-node openclaw/skills/gen-tests/agent-runner.js \
-  --repo <owner/repo> --pr <number> --run_id <run_id> --run_url <url>
-```
+## Execution
+After running the context script, the **OpenClaw agent** must:
+- read `.agent-jest/artifacts/context/initial-context.json`
+- generate tests via its configured model (internal call)
+- write files under `autotests/run-<run_id>/files/automated-tests/...`
+- post/update the PR comment keyed by `<!-- openclaw:gen-tests run_id=... -->`
+- reply in Discord with only a short summary (no file contents)
 
 ## Notes
 - Discord payload is intentionally minimal; OpenClaw fetches PR diff/context directly from GitHub.
