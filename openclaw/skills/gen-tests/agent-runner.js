@@ -100,12 +100,23 @@ async function main() {
   };
 
   // STEP generate
+  // Use chat completions (POST works) instead of responses (POST may 404 in some gateway modes).
+  const model = process.env.OPENCLAW_MODEL || undefined;
+  const chatBody = {
+    ...(model ? { model } : {}),
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    temperature: 0.2,
+  };
+
   let resText;
   try {
-    resText = await fetch(`${gatewayUrl}/v1/responses`, {
+    resText = await fetch(`${gatewayUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(chatBody),
     }).then(async (r) => {
       const t = await r.text();
       if (!r.ok) throw new Error(`HTTP ${r.status}: ${t}`);
@@ -115,9 +126,10 @@ async function main() {
     stepFail('generate', `model call failed (${String(e.message || e)})`);
   }
 
-  const resJson = JSON.parse(resText);
-  const outputText = (resJson.output_text || '').trim();
-  if (!outputText) throw new Error('Gateway response missing output_text');
+  let chatJson;
+  try { chatJson = JSON.parse(resText); } catch { stepFail('generate', 'gateway returned non-JSON'); }
+  const outputText = String(chatJson?.choices?.[0]?.message?.content || '').trim();
+  if (!outputText) stepFail('generate', 'gateway response missing choices[0].message.content');
 
   let manifest;
   try {
