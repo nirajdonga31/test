@@ -12,24 +12,16 @@ jobs:
   trigger-openclaw:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Trigger OpenClaw in Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           CONTENT: >-
-            gen-tests repo=${{ github.repository }} pr=${{ github.event.pull_request.number }} run_id=${{ github.run_id }} run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            gen-tests repo=${{ github.repository }}
+            pr=${{ github.event.pull_request.number }}
+            run_id=${{ github.run_id }}
+            run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node .github/scripts/send-discord-webhook.js
         shell: bash
-        run: |
-          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
-            echo "Missing secret DISCORD_WEBHOOK_URL" >&2
-            exit 1
-          fi
-
-          python3 - <<'PY'
-          import json, os, sys, urllib.request
-          url = os.environ['DISCORD_WEBHOOK_URL']
-          content = os.environ['CONTENT']
-          body = json.dumps({"content": content}).encode('utf-8')
-          req = urllib.request.Request(url, data=body, headers={'Content-Type': 'application/json'}, method='POST')
-          with urllib.request.urlopen(req) as resp:
-            sys.stdout.write(resp.read().decode('utf-8'))
-          PY
