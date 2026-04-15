@@ -47,33 +47,37 @@ async function main() {
   const workdir = process.env.WORKDIR || '/root/.openclaw/workspace/tester';
   const gatewayUrl = process.env.OPENCLAW_GATEWAY_URL || 'http://127.0.0.1:18789';
 
-  // Ensure GitHub token available.
-  // Prefer explicit env var; otherwise fall back to `gh auth token`.
+  const stepFail = (step, msg) => {
+    const out = { ok: false, step, message: msg, repo, pr: Number(pr), run_id: runId };
+    process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+    process.exit(2);
+  };
+
+  // STEP auth
   let ghToken = (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '').trim();
   if (!ghToken) {
-    try {
-      ghToken = sh('HOME=/root gh auth token').trim();
-    } catch {
-      // ignore
-    }
+    try { ghToken = sh('HOME=/root gh auth token').trim(); } catch {}
   }
   if (!ghToken) {
-    try {
-      ghToken = sh('gh auth token').trim();
-    } catch {
-      // ignore
-    }
+    try { ghToken = sh('gh auth token').trim(); } catch {}
   }
   if (!ghToken) {
-    throw new Error('Missing GitHub auth. Set GITHUB_TOKEN (recommended) or run: gh auth login (root).');
+    stepFail('auth', 'missing GitHub auth (set GITHUB_TOKEN/GH_TOKEN or gh auth login)');
   }
 
+  // STEP context_check
   const contextPath = path.join(workdir, '.agent-jest', 'artifacts', 'context', 'initial-context.json');
   if (!fs.existsSync(contextPath)) {
-    throw new Error(`Missing context file: ${contextPath}. Run context script first.`);
+    stepFail('context_build', `missing context file: ${contextPath}`);
   }
 
   const contextJson = fs.readFileSync(contextPath, 'utf8');
+  let parsedContext;
+  try { parsedContext = JSON.parse(contextJson); } catch { stepFail('context_check', 'context JSON is invalid'); }
+  const changedCount = Array.isArray(parsedContext.changedFiles) ? parsedContext.changedFiles.length : 0;
+  if (changedCount === 0) {
+    stepFail('context_check', 'changedFiles=0 (nothing to test / bad diff)');
+  }
 
   const system = [
     'You generate Jest unit tests for a PR based on provided context JSON.',
@@ -95,38 +99,55 @@ async function main() {
     response_format: { type: 'json_object' },
   };
 
-  const resText = await fetch(`${gatewayUrl}/v1/responses`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then(async (r) => {
-    const t = await r.text();
-    if (!r.ok) throw new Error(`Gateway error HTTP ${r.status}: ${t}`);
-    return t;
-  });
+  // STEP generate
+  let resText;
+  try {
+    resText = await fetch(`${gatewayUrl}/v1/responses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(async (r) => {
+      const t = await r.text();
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${t}`);
+      return t;
+    });
+  } catch (e) {
+    stepFail('generate', `model call failed (${String(e.message || e)})`);
+  }
 
   const resJson = JSON.parse(resText);
   const outputText = (resJson.output_text || '').trim();
   if (!outputText) throw new Error('Gateway response missing output_text');
 
-  const manifest = JSON.parse(outputText);
-  if (!manifest || !Array.isArray(manifest.files)) throw new Error('Manifest missing files[]');
+  let manifest;
+  try {
+    manifest = JSON.parse(outputText);
+  } catch {
+    stepFail('generate', 'model output was not valid JSON');
+  }
+  if (!manifest || !Array.isArray(manifest.files)) stepFail('generate', 'manifest missing files[]');
   for (const f of manifest.files) {
-    if (!f || typeof f.path !== 'string' || typeof f.content !== 'string') throw new Error('Bad file entry');
-    if (!f.path.startsWith('automated-tests/')) throw new Error(`Bad path: ${f.path}`);
+    if (!f || typeof f.path !== 'string' || typeof f.content !== 'string') stepFail('generate', 'bad file entry');
+    if (!f.path.startsWith('automated-tests/')) stepFail('generate', `bad path: ${f.path}`);
+  }
+  if (manifest.files.length === 0) {
+    stepFail('generate', 'files.length=0 (no tests generated)');
   }
 
-  // Persist manifest + files
+  // STEP write_files
   const outRoot = path.join(workdir, 'autotests', `run-${runId}`, 'files');
-  fs.mkdirSync(outRoot, { recursive: true });
+  try {
+    fs.mkdirSync(outRoot, { recursive: true });
+    const manifestPath = path.join(workdir, 'autotests', `run-${runId}`, 'generated-files.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
-  const manifestPath = path.join(workdir, 'autotests', `run-${runId}`, 'generated-files.json');
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
-
-  for (const f of manifest.files) {
-    const target = path.join(outRoot, f.path);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, f.content, 'utf8');
+    for (const f of manifest.files) {
+      const target = path.join(outRoot, f.path);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, f.content, 'utf8');
+    }
+  } catch (e) {
+    stepFail('write_files', `failed to write files (${String(e.message || e)})`);
   }
 
   // Build PR comment (file blocks)
@@ -155,7 +176,7 @@ async function main() {
   }).then(async (r) => ({ status: r.status, text: await r.text() }));
 
   if (commentsResp.status !== 200) {
-    throw new Error(`GitHub list comments failed HTTP ${commentsResp.status}: ${commentsResp.text}`);
+    stepFail('pr_comment', `GitHub list comments failed HTTP ${commentsResp.status}`);
   }
 
   const comments = JSON.parse(commentsResp.text);
@@ -174,7 +195,7 @@ async function main() {
     }).then(async (r) => ({ status: r.status, text: await r.text() }));
 
     if (patchResp.status < 200 || patchResp.status >= 300) {
-      throw new Error(`GitHub update comment failed HTTP ${patchResp.status}: ${patchResp.text}`);
+      stepFail('pr_comment', `GitHub update comment failed HTTP ${patchResp.status}`);
     }
   } else {
     const postUrl = `https://api.github.com/repos/${owner}/${repoName}/issues/${pr}/comments`;
@@ -189,7 +210,7 @@ async function main() {
     }).then(async (r) => ({ status: r.status, text: await r.text() }));
 
     if (postResp.status !== 201) {
-      throw new Error(`GitHub create comment failed HTTP ${postResp.status}: ${postResp.text}`);
+      stepFail('pr_comment', `GitHub create comment failed HTTP ${postResp.status}`);
     }
   }
 
