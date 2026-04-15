@@ -22,7 +22,8 @@ jobs:
           CONTENT: >-
             @homie Please generate Jest tests for PR #${{ github.event.pull_request.number }} in repo ${{ github.repository }}.
             Use the runbook at openclaw/skills/gen-tests/SKILL.md.
-            Save the generated tests on the server under tester/autotests/run-${{ github.run_id }}/files/ and then comment the PR with the test files as code blocks (do not commit).
+            Save the generated tests on the server under tester/autotests/run-${{ github.run_id }}/files/.
+            IMPORTANT: Reply in Discord with ONLY a short summary (list file paths + counts). Do NOT paste full test contents in Discord.
             Run link: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}.
         run: node .github/scripts/send-discord-webhook.js
         shell: bash

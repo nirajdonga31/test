@@ -18,6 +18,11 @@ Purpose: Orchestrate the existing `tester/.agent-jest` pipeline from OpenClaw:
 ## Outputs
 - A single PR comment (create or update) containing generated test suggestions, keyed by marker:
   `<!-- openclaw:gen-tests run_id=... -->`
+- A short Discord reply summarizing what was generated:
+  - server storage path
+  - number of files
+  - list of file paths
+  (Do NOT paste full test contents in Discord.)
 
 ## Notes
 - Discord payload is intentionally minimal; OpenClaw fetches PR diff/context directly from GitHub.
