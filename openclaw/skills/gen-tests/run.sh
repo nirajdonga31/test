@@ -98,10 +98,18 @@ USR
 )
 
 # Request generation from OpenClaw gateway using configured primary model.
-manifest_json=$(curl -sS "$OPENCLAW_GATEWAY_URL/v1/responses" \
+resp=$(curl -sS -w "\n%{http_code}" "$OPENCLAW_GATEWAY_URL/v1/responses" \
   -H 'Content-Type: application/json' \
-  -d "$(node -e 'const system=process.argv[1]; const user=process.argv[2]; const body={input:[{role:"system",content:[{type:"text",text:system}]},{role:"user",content:[{type:"text",text:user}]}],response_format:{type:"json_object"}}; console.log(JSON.stringify(body));' "$system_prompt" "$user_prompt")" \
-  | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{const j=JSON.parse(s); const t=j.output_text||""; if(!t.trim()){console.error("Missing output_text"); process.exit(2);} process.stdout.write(t);});')
+  -d "$(node -e 'const system=process.argv[1]; const user=process.argv[2]; const body={input:[{role:"system",content:[{type:"text",text:system}]},{role:"user",content:[{type:"text",text:user}]}],response_format:{type:"json_object"}}; console.log(JSON.stringify(body));' "$system_prompt" "$user_prompt")")
+resp_body=$(echo "$resp" | sed '$d')
+resp_code=$(echo "$resp" | tail -n 1)
+if [[ "$resp_code" != "200" ]]; then
+  echo "OpenClaw gateway /v1/responses error: HTTP $resp_code" >&2
+  echo "$resp_body" >&2
+  exit 2
+fi
+
+manifest_json=$(echo "$resp_body" | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{const j=JSON.parse(s); const t=j.output_text||""; if(!t.trim()){console.error("Missing output_text"); process.exit(2);} process.stdout.write(t);});')
 
 # Validate JSON and required schema quickly.
 node -e 'const fs=require("fs"); const m=JSON.parse(process.argv[1]); if(!m||!Array.isArray(m.files)) throw new Error("missing files"); for(const f of m.files){ if(!f||typeof f.path!=="string"||typeof f.content!=="string") throw new Error("bad file entry"); if(!f.path.startsWith("automated-tests/")) throw new Error("bad path "+f.path);} ' "$manifest_json"
@@ -153,9 +161,16 @@ EOF
 )
 
 # Find existing comment
-comments=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+comments_resp=$(curl -sS -w "\n%{http_code}" -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
   "https://api.github.com/repos/$OWNER/$REPO_NAME/issues/$pr/comments?per_page=100")
-existing_id=$(node -e 'const comments=JSON.parse(process.argv[1]); const marker=process.argv[2]; const c=comments.find(c=>c.body&&c.body.includes(marker)); console.log(c?c.id:"")' "$comments" "$marker")
+comments_body=$(echo "$comments_resp" | sed '$d')
+comments_code=$(echo "$comments_resp" | tail -n 1)
+if [[ "$comments_code" != "200" ]]; then
+  echo "GitHub API error listing comments: HTTP $comments_code" >&2
+  echo "$comments_body" >&2
+  exit 2
+fi
+existing_id=$(node -e 'const comments=JSON.parse(process.argv[1]); const marker=process.argv[2]; const c=comments.find(c=>c.body&&c.body.includes(marker)); console.log(c?c.id:"")' "$comments_body" "$marker")
 
 if [[ -n "$existing_id" ]]; then
   curl -sS -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
