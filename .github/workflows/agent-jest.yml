@@ -21,8 +21,10 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           CONTENT: >-
             <@1480911709358002277> Please generate Jest tests for PR #${{ github.event.pull_request.number }} in repo ${{ github.repository }}.
-            Use the runbook at openclaw/skills/gen-tests/SKILL.md.
-            Save the generated tests on the server under tester/autotests/run-${{ github.run_id }}/files/.
+            Workdir (pwd): /root/.openclaw/workspace/tester
+            Runbook (absolute): /root/.openclaw/workspace/tester/openclaw/skills/gen-tests/SKILL.md
+            Context script: /root/.openclaw/workspace/tester/openclaw/skills/gen-tests/run.sh
+            Save the generated tests on the server under /root/.openclaw/workspace/tester/autotests/run-${{ github.run_id }}/files/.
             IMPORTANT: Reply in Discord with ONLY a short summary (list file paths + counts). Do NOT paste full test contents in Discord.
             Run link: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}.
         run: node .github/scripts/send-discord-webhook.js
