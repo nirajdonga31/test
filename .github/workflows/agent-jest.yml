@@ -19,9 +19,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           CONTENT: >-
-            <@1480911709358002277> gen-tests repo=${{ github.repository }}
-            pr=${{ github.event.pull_request.number }}
-            run_id=${{ github.run_id }}
-            run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            <@1480911709358002277> run /root/.openclaw/workspace/skills/gen-tests/run.sh
+            "gen-tests repo=${{ github.repository }} pr=${{ github.event.pull_request.number }} run_id=${{ github.run_id }} run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: node .github/scripts/send-discord-webhook.js
         shell: bash
