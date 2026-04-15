@@ -2,6 +2,7 @@ name: agent-jest
 
 on:
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -12,32 +13,14 @@ jobs:
   trigger-openclaw:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Trigger OpenClaw in Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
-          RUN_ID: ${{ github.run_id }}
-          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
-            echo "Missing secret DISCORD_WEBHOOK_URL" >&2
-            exit 1
-          fi
-
-          # Keep payload minimal; OpenClaw fetches diff/context directly from GitHub.
-          content="gen-tests repo=$REPO pr=$PR run_id=$RUN_ID run_url=$RUN_URL"
-
-          # Escape JSON safely
-          python3 - <<'PY'
-import json, os, sys, urllib.request
-url = os.environ['DISCORD_WEBHOOK_URL']
-content = os.environ['CONTENT']
-body = json.dumps({"content": content}).encode('utf-8')
-req = urllib.request.Request(url, data=body, headers={'Content-Type': 'application/json'}, method='POST')
-with urllib.request.urlopen(req) as resp:
-  sys.stdout.write(resp.read().decode('utf-8'))
-PY
+          CONTENT: >-
+            <@1480911709358002277> run /root/.openclaw/workspace/skills/gen-tests/run.sh
+            "gen-tests repo=${{ github.repository }} pr=${{ github.event.pull_request.number }} run_id=${{ github.run_id }} run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: node .github/scripts/send-discord-webhook.js
         shell: bash
-        env:
-          CONTENT: "gen-tests repo=${{ github.repository }} pr=${{ github.event.pull_request.number }} run_id=${{ github.run_id }} run_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
