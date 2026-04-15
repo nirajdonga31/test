@@ -92,6 +92,23 @@ node -e 'const fs=require("fs"); const m=JSON.parse(process.argv[1]); if(!m||!Ar
 
 echo "$manifest_json" > artifacts/generated/generated-files.json
 
+# Persist generated test files under repo root for auditing:
+#   tester/autotests/run-<run_id>/files/<file>
+OUTDIR="/root/.openclaw/workspace/tester/autotests/run-$run_id/files"
+mkdir -p "$OUTDIR"
+OUTDIR="$OUTDIR" node -e '
+const fs=require("fs");
+const path=require("path");
+const m=JSON.parse(fs.readFileSync("artifacts/generated/generated-files.json","utf8"));
+const outdir=process.env.OUTDIR;
+for(const f of m.files){
+  const rel=f.path; // e.g. automated-tests/xyz.test.ts
+  const target=path.join(outdir, rel);
+  fs.mkdirSync(path.dirname(target), {recursive:true});
+  fs.writeFileSync(target, f.content, "utf8");
+}
+'
+
 # Validate
 npm run validate:generated
 
