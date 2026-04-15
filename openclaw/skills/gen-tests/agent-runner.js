@@ -47,14 +47,26 @@ async function main() {
   const workdir = process.env.WORKDIR || '/root/.openclaw/workspace/tester';
   const gatewayUrl = process.env.OPENCLAW_GATEWAY_URL || 'http://127.0.0.1:18789';
 
-  // Ensure gh token available
-  let ghToken = '';
-  try {
-    ghToken = sh('gh auth token').trim();
-  } catch {
-    throw new Error('Missing gh auth token. Run: gh auth login');
+  // Ensure GitHub token available.
+  // Prefer explicit env var; otherwise fall back to `gh auth token`.
+  let ghToken = (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '').trim();
+  if (!ghToken) {
+    try {
+      ghToken = sh('HOME=/root gh auth token').trim();
+    } catch {
+      // ignore
+    }
   }
-  if (!ghToken) throw new Error('Missing gh auth token. Run: gh auth login');
+  if (!ghToken) {
+    try {
+      ghToken = sh('gh auth token').trim();
+    } catch {
+      // ignore
+    }
+  }
+  if (!ghToken) {
+    throw new Error('Missing GitHub auth. Set GITHUB_TOKEN (recommended) or run: gh auth login (root).');
+  }
 
   const contextPath = path.join(workdir, '.agent-jest', 'artifacts', 'context', 'initial-context.json');
   if (!fs.existsSync(contextPath)) {
