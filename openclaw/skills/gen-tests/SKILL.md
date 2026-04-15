@@ -18,11 +18,22 @@ Purpose: Orchestrate the existing `tester/.agent-jest` pipeline from OpenClaw:
 ## Outputs
 - A single PR comment (create or update) containing generated test suggestions, keyed by marker:
   `<!-- openclaw:gen-tests run_id=... -->`
+- Generated files persisted on the server under:
+  `/root/.openclaw/workspace/tester/autotests/run-<run_id>/files/`
 - A short Discord reply summarizing what was generated:
   - server storage path
   - number of files
   - list of file paths
   (Do NOT paste full test contents in Discord.)
+
+## Runner
+After running the context script, run:
+
+```bash
+cd /root/.openclaw/workspace/tester
+node openclaw/skills/gen-tests/agent-runner.js \
+  --repo <owner/repo> --pr <number> --run_id <run_id> --run_url <url>
+```
 
 ## Notes
 - Discord payload is intentionally minimal; OpenClaw fetches PR diff/context directly from GitHub.
