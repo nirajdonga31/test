@@ -51,6 +51,12 @@ pr_json=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: applicat
 base_sha=$(node -e 'const j=JSON.parse(process.argv[1]); console.log(j.base.sha)' "$pr_json")
 head_sha=$(node -e 'const j=JSON.parse(process.argv[1]); console.log(j.head.sha)' "$pr_json")
 
+# Ensure we have the exact SHAs locally for diff/context build
+cd "$WORKDIR"
+git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://github.com/$repo.git"
+# Fetch base/head SHAs explicitly (works even if they are not in current refs)
+git fetch --no-tags --prune origin "$base_sha" "$head_sha"
+
 # Build context using existing script
 cd "$TOOLDIR"
 PR_BASE_SHA="$base_sha" PR_HEAD_SHA="$head_sha" PR_NUMBER="$pr" GITHUB_REPOSITORY="$repo" \
