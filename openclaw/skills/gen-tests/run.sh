@@ -36,20 +36,30 @@ npm ci
 npm run build
 
 # Fetch PR base/head via GitHub API.
-# Prefer explicit GITHUB_TOKEN, otherwise fall back to `gh auth token` (if already logged in).
-if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  if command -v gh >/dev/null 2>&1; then
-    GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
-  fi
+# Always use `gh auth token`.
+if ! command -v gh >/dev/null 2>&1; then
+  echo "Missing gh CLI. Install gh and run: gh auth login" >&2
+  exit 2
 fi
-: "${GITHUB_TOKEN:?GITHUB_TOKEN env var required (or run `gh auth login` for this user) }"
+GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+if [[ -z "$GITHUB_TOKEN" ]]; then
+  echo "Missing gh auth token. Run: gh auth login" >&2
+  exit 2
+fi
 OWNER="${repo%%/*}"
 REPO_NAME="${repo#*/}"
 
 api="https://api.github.com/repos/$OWNER/$REPO_NAME/pulls/$pr"
-pr_json=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$api")
-base_sha=$(node -e 'const j=JSON.parse(process.argv[1]); console.log(j.base.sha)' "$pr_json")
-head_sha=$(node -e 'const j=JSON.parse(process.argv[1]); console.log(j.head.sha)' "$pr_json")
+pr_resp=$(curl -sS -w "\n%{http_code}" -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$api")
+pr_body=$(echo "$pr_resp" | sed '$d')
+pr_code=$(echo "$pr_resp" | tail -n 1)
+if [[ "$pr_code" != "200" ]]; then
+  echo "GitHub API error fetching PR: HTTP $pr_code" >&2
+  echo "$pr_body" >&2
+  exit 2
+fi
+base_sha=$(node -e 'const j=JSON.parse(process.argv[1]); console.log(j.base.sha)' "$pr_body")
+head_sha=$(node -e 'const j=JSON.parse(process.argv[1]); console.log(j.head.sha)' "$pr_body")
 
 # Ensure we have the exact SHAs locally for diff/context build
 cd "$WORKDIR"
